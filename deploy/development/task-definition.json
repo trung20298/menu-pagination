@@ -1,0 +1,72 @@
+{
+    "containerDefinitions": [
+        {
+            "name": "shimnit-portal",
+            "image": "IMAGE_URI",
+            "cpu": 0,
+            "memoryReservation": 450,
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [],
+            "secrets": [
+                {
+                    "name": "JWT_SECRET",
+                    "valueFrom": "arn:aws:ssm:ap-southeast-1:611515463420:parameter/int/shimnit/portal/jwt/secret"
+                },
+                {
+                    "name": "MONGO_LOCAL_CONN_URL",
+                    "valueFrom": "arn:aws:ssm:ap-southeast-1:611515463420:parameter/int/shimnit/portal/mongo/uri"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awsfirelens",
+                "options": {
+                    "HTTP_Passwd": "jmango360",
+                    "HTTP_User": "elastic",
+                    "Host": "172.30.0.146",
+                    "Index": "shimnit-portal",
+                    "Logstash_Format": "On",
+                    "Logstash_Prefix": "shimnit-portal",
+                    "Name": "es",
+                    "Port": "9200"
+                }
+            }
+        },
+        {
+            "name": "log_router",
+            "image": "906394416424.dkr.ecr.ap-south-1.amazonaws.com/aws-for-fluent-bit:2.16.0",
+            "cpu": 0,
+            "memoryReservation": 50,
+            "essential": false,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "ecs/development/shimnit-portal",
+                    "awslogs-region": "ap-southeast-1",
+                    "awslogs-stream-prefix": "shimnit-portal"
+                }
+            },
+            "firelensConfiguration": {
+                "type": "fluentbit",
+                "options": {
+                    "config-file-type": "file",
+                    "config-file-value": "/fluent-bit/configs/parse-json.conf"
+                }
+            }
+        }
+    ],
+    "family": "shimnit-portal",
+    "executionRoleArn": "arn:aws:iam::611515463420:role/ecsShimnitPortalRole",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512"
+}

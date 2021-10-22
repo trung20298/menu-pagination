@@ -1,0 +1,39 @@
+image: alpine:latest
+
+stages:
+  - build:image
+  - deploy
+
+Build Image:
+  stage: build:image
+  image: gcr.io/kaniko-project/executor:debug
+  variables:
+    GIT_DEPTH: 1
+    ECR: "611515463420.dkr.ecr.ap-southeast-1.amazonaws.com"
+  script:
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --log-timestamp --verbosity info --destination $ECR/shimnit-portal:$CI_COMMIT_SHORT_SHA
+  only:
+    - int
+  tags:
+    - int-runner
+
+Deploy App:
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  stage: deploy
+  variables:
+    GIT_DEPTH: 1
+    ECR: "611515463420.dkr.ecr.ap-southeast-1.amazonaws.com"
+  script:
+    - sed -i "s|IMAGE_URI|$ECR/shimnit-portal:$CI_COMMIT_SHORT_SHA|g" deploy/development/task-definition.json
+
+    - echo "New task definition"
+    - cat deploy/development/task-definition.json
+
+    - aws ecs register-task-definition --cli-input-json file://$PWD/deploy/development/task-definition.json >> temp.json
+    - REV=`jq .taskDefinition.revision temp.json`
+    - echo "Apply task definition revision shimnit-portal:$REV"
+    - aws ecs update-service --cluster shimnit-portal --service shimnit-portal --task-definition shimnit-portal:$REV --force-new-deployment > /dev/null
+  only:
+    - int
+  tags:
+    - int-runner
